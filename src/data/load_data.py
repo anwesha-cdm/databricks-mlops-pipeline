@@ -4,23 +4,14 @@ from pyspark.sql import SparkSession
 from pyspark.sql import DataFrame
 
 
-def load_data(spark: SparkSession, path: str) -> DataFrame:
+
+def load_data(spark: SparkSession, config: dict):
     """
-    Load CSV data from Databricks Volume
-
-    Args:
-        spark: SparkSession
-        path: path to CSV file
-
-    Returns:
-        Spark DataFrame
+    Load raw data from path
     """
+    path = config["data"]["input_path"]
 
-    df = spark.read.csv(
-        path,
-        header=True,
-        inferSchema=True
-    )
+    df = spark.read.csv(path, header=True, inferSchema=True)
 
     return df
 

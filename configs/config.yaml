@@ -1,0 +1,29 @@
+env: dev
+
+data:
+  input_path: "/Volumes/dev_digital_engineering_services/default/databricksmlopspipeline/water_potability.csv"
+
+catalog:
+  dev: dev_digital_engineering_services
+  staging: staging_digital_engineering_services
+  prod: prod_digital_engineering_services
+
+feature_store:
+  schema: default
+  table_name: water_quality_features
+
+model_registry:
+  schema: default
+  name: water_quality_model
+  
+training:
+  target: "Potability"
+  test_size: 0.2
+  random_state: 42
+
+model:
+  type: "RandomForest"
+  n_estimators: 100
+
+mlflow:
+  experiment_name: "/Shared/water_quality_exp"

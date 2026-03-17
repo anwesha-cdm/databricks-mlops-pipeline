@@ -1,0 +1,31 @@
+bundle:
+  name: databricks-mlops-pipeline
+
+targets:
+  dev:
+    workspace:
+      host: https://adb-269274943657929.9.azuredatabricks.net/
+
+resources:
+  jobs:
+    ml_pipeline_job:
+
+      name: ml-pipeline-job
+
+      tasks:
+        - task_key: run_pipeline
+
+          spark_python_task:
+            python_file: ./src/pipelines/run_pipeline.py
+          
+          existing_cluster_id: "0317-080747-phajygte"
+
+      #     job_cluster_key: job_cluster
+
+      # job_clusters:
+      #   - job_cluster_key: job_cluster
+
+      #     new_cluster:
+      #       spark_version: 13.3.x-scala2.12
+      #       node_type_id: Standard_DS3_v2
+      #       num_workers: 2
