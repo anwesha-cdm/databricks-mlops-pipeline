@@ -1,0 +1,257 @@
+bundle:
+  name: water_quality_mlops
+  
+variables:
+  catalog_name:
+    description: "Unity Catalog name"
+    default: "dev_digital_engineering_services"
+  schema_name:
+    description: "Schema name" 
+    default: "default"
+  model_name:
+    description: "Model name"
+    default: "water_quality_model"
+  experiment_path:
+    description: "MLflow experiment path"
+    default: "/Shared/water_quality_exp"
+  endpoint_name:
+    description: "Model serving endpoint name"
+    default: "water-quality-endpoint"
+  cluster_id:
+    description: "Databricks cluster ID for job execution"
+    default: "0330-192824-2qmica76"
+  data_source_path:
+    description: "Path to source data"
+    default: "/databricks-datasets/water_quality/water_potability.csv"
+
+environments:
+  dev:
+    default: true
+    mode: development
+    workspace:
+      host: https://adb-269274943657929.9.azuredatabricks.net/
+    variables:
+      catalog_name:
+        default: "dev_digital_engineering_services"
+      schema_name:
+        default: "default"
+      model_name:
+        default: "water_quality_model"
+      experiment_path:
+        default: "/Shared/water_quality_exp"
+      
+  staging:
+    mode: development
+    workspace:
+      host: https://adb-269274943657929.9.azuredatabricks.net/
+    variables:
+      catalog_name:
+        default: "staging_digital_engineering_services"
+      schema_name:
+        default: "default"
+      model_name:
+        default: "water_quality_model"
+      experiment_path:
+        default: "/Shared/water_quality_exp_staging"
+      
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-269274943657929.9.azuredatabricks.net/
+    variables:
+      catalog_name:
+        default: "prod_digital_engineering_services"
+      schema_name:
+        default: "default"
+      model_name:
+        default: "water_quality_model"
+      experiment_path:
+        default: "/Shared/water_quality_exp_prod"
+
+resources:
+  jobs:
+    # 🔄 DATA INGESTION PIPELINE
+    data_ingestion_job:
+      name: "water-quality-data-ingestion-${bundle.environment}"
+      schedule:
+        quartz_cron_expression: "0 0 1 * * ?"  # Daily at 1 AM
+        timezone_id: "UTC"
+      tasks:
+        - task_key: "data_ingestion"
+          existing_cluster_id: "${var.cluster_id}"
+          notebook_task:
+            notebook_path: "./notebooks/1_data_preprocessing/data_ingestion.ipynb"
+            base_parameters:
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+      tags:
+        Project: "water_quality_mlops"
+        Environment: "${bundle.environment}"
+        Pipeline: "data_ingestion"
+        
+    # 🤖 MODEL TRAINING PIPELINE
+    model_training_job:
+      name: "water-quality-model-training-${bundle.environment}"
+      tasks:
+        - task_key: "model_training"
+          existing_cluster_id: "${var.cluster_id}"
+          notebook_task:
+            notebook_path: "./notebooks/2_model_training_and_deployment/model_training.ipynb"
+            base_parameters:
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+              model_name: "${var.model_name}"
+              experiment_path: "${var.experiment_path}"
+      tags:
+        Project: "water_quality_mlops"
+        Environment: "${bundle.environment}"
+        Pipeline: "model_training"
+        
+    # 📊 MODEL EVALUATION PIPELINE  
+    model_evaluation_job:
+      name: "water-quality-model-evaluation-${bundle.environment}"
+      tasks:
+        - task_key: "model_evaluation"
+          existing_cluster_id: "${var.cluster_id}"
+          notebook_task:
+            notebook_path: "./notebooks/2_model_training_and_deployment/model_deployment/1_model_evaluation.ipynb"
+            base_parameters:
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+              model_name: "${var.model_name}"
+              experiment_path: "${var.experiment_path}"
+      tags:
+        Project: "water_quality_mlops"
+        Environment: "${bundle.environment}"
+        Pipeline: "model_evaluation"
+        
+    # ✅ MODEL APPROVAL PIPELINE
+    model_approval_job:
+      name: "water-quality-model-approval-${bundle.environment}"
+      tasks:
+        - task_key: "model_approval"
+          existing_cluster_id: "${var.cluster_id}"
+          notebook_task:
+            notebook_path: "./notebooks/2_model_training_and_deployment/model_deployment/2_model_approval.ipynb"
+            base_parameters:
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+              model_name: "${var.model_name}"
+      tags:
+        Project: "water_quality_mlops"
+        Environment: "${bundle.environment}"
+        Pipeline: "model_approval"
+        
+    # 🚀 MODEL DEPLOYMENT PIPELINE
+    model_deployment_job:
+      name: "water-quality-model-deployment-${bundle.environment}"
+      tasks:
+        - task_key: "model_deployment"
+          existing_cluster_id: "${var.cluster_id}"
+          notebook_task:
+            notebook_path: "./notebooks/2_model_training_and_deployment/model_deployment/3_model_deployment.ipynb"
+            base_parameters:
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+              model_name: "${var.model_name}"
+              endpoint_name: "water-quality-endpoint-${bundle.environment}"
+      tags:
+        Project: "water_quality_mlops"
+        Environment: "${bundle.environment}"
+        Pipeline: "model_deployment"
+        
+    # 📈 BATCH INFERENCE PIPELINE
+    batch_inference_job:
+      name: "water-quality-batch-inference-${bundle.environment}"
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?"  # Daily at 2 AM  
+        timezone_id: "UTC"
+      tasks:
+        - task_key: "batch_inference"
+          existing_cluster_id: "${var.cluster_id}"
+          notebook_task:
+            notebook_path: "./notebooks/3_inference/batch_inference.ipynb"
+            base_parameters:
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+              model_name: "${var.model_name}"
+      tags:
+        Project: "water_quality_mlops"
+        Environment: "${bundle.environment}"
+        Pipeline: "batch_inference"
+        
+    # ⚡ REALTIME INFERENCE PIPELINE
+    realtime_inference_job:
+      name: "water-quality-realtime-inference-${bundle.environment}"
+      schedule:
+        quartz_cron_expression: "0 0 3 * * ?"  # Daily at 3 AM
+        timezone_id: "UTC"
+      tasks:
+        - task_key: "realtime_inference"
+          existing_cluster_id: "${var.cluster_id}"
+          notebook_task:
+            notebook_path: "./notebooks/3_inference/realtime_inference.ipynb"
+            base_parameters:
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+              model_name: "${var.model_name}"
+              endpoint_name: "water-quality-endpoint-${bundle.environment}"
+      tags:
+        Project: "water_quality_mlops"
+        Environment: "${bundle.environment}"
+        Pipeline: "realtime_inference"
+        
+    # 🔍 MONITORING SETUP PIPELINE
+    monitoring_setup_job:
+      name: "water-quality-monitoring-setup-${bundle.environment}"
+      tasks:
+        - task_key: "create_monitor"
+          existing_cluster_id: "${var.cluster_id}"
+          notebook_task:
+            notebook_path: "./notebooks/4_monitoring/create_monitor.ipynb"
+            base_parameters:
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+              model_name: "${var.model_name}"
+      tags:
+        Project: "water_quality_mlops"
+        Environment: "${bundle.environment}"
+        Pipeline: "monitoring_setup"
+        
+    # 🚨 DRIFT DETECTION PIPELINE
+    drift_detection_job:
+      name: "water-quality-drift-detection-${bundle.environment}"
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"  # Daily at 6 AM
+        timezone_id: "UTC"
+      tasks:
+        - task_key: "drift_detection"
+          existing_cluster_id: "${var.cluster_id}"
+          notebook_task:
+            notebook_path: "./notebooks/4_monitoring/drift_detection.ipynb"
+            base_parameters:
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+              model_name: "${var.model_name}"
+      tags:
+        Project: "water_quality_mlops"
+        Environment: "${bundle.environment}"
+        Pipeline: "drift_detection"
+        
+    # 🌊 DRIFT SIMULATION PIPELINE (Dev/Testing Only)
+    drift_simulation_job:
+      name: "water-quality-drift-simulation-${bundle.environment}"
+      tasks:
+        - task_key: "simulate_drift"
+          existing_cluster_id: "${var.cluster_id}"
+          notebook_task:
+            notebook_path: "./notebooks/4_monitoring/simulate_drift.ipynb"
+            base_parameters:
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+              drift_type: "feature_shift"
+              drift_magnitude: "2.0"
+      tags:
+        Project: "water_quality_mlops"
+        Environment: "${bundle.environment}"
+        Pipeline: "drift_simulation"
