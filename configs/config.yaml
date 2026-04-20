@@ -9,11 +9,15 @@ catalog:
   prod: prod_digital_engineering_services
 
 feature_store:
-  schema: default
+  dev_schema: default
+  staging_schema: staging
+  prod_schema: prod
   table_name: water_quality_features
 
 model_registry:
-  schema: default
+  dev_schema: default
+  staging_schema: staging
+  prod_schema: prod
   name: water_quality_model
   
 training:
