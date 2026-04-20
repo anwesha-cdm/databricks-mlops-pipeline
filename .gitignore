@@ -1,0 +1,43 @@
+# Security - Never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Databricks
+.databricks/bundle/
+.databricks/.databricks.cfg
+*.terraform.tfstate*
+*.terraform.lock.hcl
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# MLflow
+mlruns/
+mlartifacts/
